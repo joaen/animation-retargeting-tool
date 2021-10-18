@@ -13,5 +13,6 @@ animation_retargeting_tool.start()
 
 Known bugs:
 * The bake animation is a tad bit slow. Might have to replace the BakeResults command with something more robust.
+* The script is not compatible with Maya 2022 at the moment. I just need to add a check which Python version the Maya instance is running.
 
-![Image of tool](https://github.com/joaen/animation_retargeting_tool/blob/main/images/thumbnail.png?raw=true)
+![Image of tool](https://github.com/joaen/animation_retargeting_tool/blob/main/images/thumbnail01.png?raw=true)
