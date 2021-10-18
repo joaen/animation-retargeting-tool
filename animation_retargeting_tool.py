@@ -13,7 +13,6 @@ import animation_retargeting_tool
 animation_retargeting_tool.start()
  
 '''
-import maya.mel as mel
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om2
