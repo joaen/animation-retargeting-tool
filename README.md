@@ -27,5 +27,5 @@ animation_retargeting_tool.start()
 ![](https://github.com/joaen/animation_retargeting_tool/blob/main/images/load_fbx.gif)
 
 ## Known bugs:
-* The bake animation is a tad bit slow. Might have to replace the BakeResults command with something more robust.
-* The script is not compatible with Maya 2022 at the moment. I just need to add a check which Python version the Maya instance is running.
+* The bake animation command is a bit slow.
+* ~~The script is not compatible with Maya 2022 at the moment.~~
