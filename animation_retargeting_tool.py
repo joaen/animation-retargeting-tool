@@ -13,6 +13,7 @@ import animation_retargeting_tool
 animation_retargeting_tool.start()
  
 '''
+import sys
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om2
@@ -24,7 +25,10 @@ from PySide2 import QtWidgets
 def maya_main_window():
     # Return the Maya main window as QMainWindow
     main_window = omui.MQtUtil.mainWindow()
-    return wrapInstance(long(main_window), QtWidgets.QWidget)
+    if sys.version_info.major >= 3:
+        return wrapInstance(int(main_window), QtWidgets.QWidget)
+    else:
+        return wrapInstance(long(main_window), QtWidgets.QWidget)
 
 
 class RetargetWindow_UI(QtWidgets.QDialog):
