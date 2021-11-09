@@ -44,14 +44,15 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         self.connection_list = []
         self.counter = 0
         self.maya_color_list = [13, 18, 14, 17]
- 
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.resize(380, 300)
- 
         self.create_ui_widgets()
         self.create_ui_layout()
         self.create_ui_connections()
+
+        if cmds.about(macOS=True):
+            self.setWindowFlags(QtCore.Qt.Tool)
  
     def create_ui_widgets(self):
         self.refresh_button = QtWidgets.QPushButton("Refresh List")
