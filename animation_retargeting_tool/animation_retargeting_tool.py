@@ -18,8 +18,7 @@ import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om2
 from shiboken2 import wrapInstance
-from PySide2 import QtCore
-from PySide2 import QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 
 
 def maya_main_window():
@@ -28,7 +27,7 @@ def maya_main_window():
     if sys.version_info.major >= 3:
         return wrapInstance(int(main_window), QtWidgets.QWidget)
     else:
-        return wrapInstance(long(main_window), QtWidgets.QWidget)
+        return wrapInstance(long(main_window), QtWidgets.QWidget) # type: ignore
 
 
 class RetargetWindow_UI(QtWidgets.QDialog):
@@ -55,10 +54,12 @@ class RetargetWindow_UI(QtWidgets.QDialog):
             self.setWindowFlags(QtCore.Qt.Tool)
  
     def create_ui_widgets(self):
-        self.refresh_button = QtWidgets.QPushButton("Refresh List")
+        self.refresh_button = QtWidgets.QPushButton(QtGui.QIcon(":refresh.png"), "")
         self.simple_conn_button = QtWidgets.QPushButton("Create Connection")
         self.ik_conn_button = QtWidgets.QPushButton("Create IK Connection")
         self.bake_button = QtWidgets.QPushButton("Bake Animation")
+        self.bake_button.setStyleSheet("background-color: lightgreen; color: black")
+        self.batch_bake_button = QtWidgets.QPushButton("Batch Bake And Export ...")
 
         self.help_button = QtWidgets.QPushButton("?")
         self.help_button.setFixedWidth(25)
@@ -79,7 +80,7 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         upper_row_buttons.addStretch()
 
         lower_row_buttons = QtWidgets.QHBoxLayout()
-        lower_row_buttons.addWidget(self.refresh_button)
+        lower_row_buttons.addWidget(self.batch_bake_button)
         lower_row_buttons.addWidget(self.bake_button)
  
         connection_list_widget = QtWidgets.QWidget()
@@ -104,6 +105,7 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         self.ik_conn_button.clicked.connect(self.create_ik_connection_node)
         self.refresh_button.clicked.connect(self.refresh_ui_list)
         self.bake_button.clicked.connect(self.bake_animation)
+        self.batch_bake_button.clicked.connect(self.open_batch_window)
         self.help_button.clicked.connect(self.help_dialog)
 
         self.rot_checkbox.setChecked(True)
@@ -178,13 +180,13 @@ class RetargetWindow_UI(QtWidgets.QDialog):
 
     def create_connection_node(self):
         try:
-            selected_joint = cmds.ls(sl=True)[0]
-            selected_ctrl = cmds.ls(sl=True)[1]
+            selected_joint = cmds.ls(selection=True)[0]
+            selected_ctrl = cmds.ls(selection=True)[1]
         except:
             return cmds.warning("No selections!")
 
         if retarget_tool_ui.get_snap_checkbox() == True:
-            self.align_a_to_b(selected_ctrl, selected_joint)
+            cmds.matchTransform(selected_ctrl, selected_joint, pos=True)
         else:
             pass
         
@@ -200,23 +202,23 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         locator = self.create_ctrl_sphere(selected_joint+suffix)
         
         # Add message attr
-        cmds.addAttr(locator, ln="ConnectNode", attributeType="message")
-        cmds.addAttr(selected_ctrl, ln="ConnectedCtrl", attributeType="message")
+        cmds.addAttr(locator, longName="ConnectNode", attributeType="message")
+        cmds.addAttr(selected_ctrl, longName="ConnectedCtrl", attributeType="message")
         cmds.connectAttr(locator+".ConnectNode",selected_ctrl+".ConnectedCtrl")
 
         cmds.parent(locator, selected_joint)
-        cmds.xform(locator, ro=(0, 0, 0))
-        cmds.xform(locator, t=(0, 0, 0))
+        cmds.xform(locator, rotation=(0, 0, 0))
+        cmds.xform(locator, translation=(0, 0, 0))
  
         # Select the type of constraint based on the ui checkboxes
         if retarget_tool_ui.get_rot_checkbox() == True and retarget_tool_ui.get_pos_checkbox() == True:
-            cmds.parentConstraint(locator, selected_ctrl, w=1, mo=True)
+            cmds.parentConstraint(locator, selected_ctrl, maintainOffset=True)
     
         elif retarget_tool_ui.get_rot_checkbox() == True and retarget_tool_ui.get_pos_checkbox() == False:
-            cmds.orientConstraint(locator, selected_ctrl, w=1, mo=True)
+            cmds.orientConstraint(locator, selected_ctrl, maintainOffset=True)
     
         elif retarget_tool_ui.get_pos_checkbox() == True and retarget_tool_ui.get_rot_checkbox() == False:
-            cmds.pointConstraint(locator, selected_ctrl, w=1, mo=True)
+            cmds.pointConstraint(locator, selected_ctrl, maintainOffset=True)
         else:
             cmds.warning("Select translation and/or rotation!")
             cmds.delete(locator)
@@ -226,8 +228,8 @@ class RetargetWindow_UI(QtWidgets.QDialog):
  
     def create_ik_connection_node(self):
         try:
-            selected_joint = cmds.ls(sl=True)[0]
-            selected_ctrl = cmds.ls(sl=True)[1]
+            selected_joint = cmds.ls(selection=True)[0]
+            selected_ctrl = cmds.ls(selection=True)[1]
         except:
             return cmds.warning("No selections!")
 
@@ -235,34 +237,34 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         self.pos_checkbox.setChecked(True)
 
         if retarget_tool_ui.get_snap_checkbox() == True:
-            self.align_a_to_b(selected_ctrl, selected_joint)
+            cmds.matchTransform(selected_ctrl, selected_joint, pos=True)
         else:
             pass
         
         tran_locator = self.create_ctrl_sphere(selected_joint+"_TRAN")
 
         cmds.parent(tran_locator, selected_joint)
-        cmds.xform(tran_locator, ro=(0, 0, 0))
-        cmds.xform(tran_locator, t=(0, 0, 0))
+        cmds.xform(tran_locator, rotation=(0, 0, 0))
+        cmds.xform(tran_locator, translation=(0, 0, 0))
 
         rot_locator = self.create_ctrl_locator(selected_joint+"_ROT")
 
         # Add message attributes and connect them
-        cmds.addAttr(tran_locator, ln="ConnectNode", attributeType="message")
-        cmds.addAttr(rot_locator, ln="ConnectNode", attributeType="message")
-        cmds.addAttr(selected_ctrl, ln="ConnectedCtrl", attributeType="message")
+        cmds.addAttr(tran_locator, longName="ConnectNode", attributeType="message")
+        cmds.addAttr(rot_locator, longName="ConnectNode", attributeType="message")
+        cmds.addAttr(selected_ctrl, longName="ConnectedCtrl", attributeType="message")
         cmds.connectAttr(tran_locator+".ConnectNode",selected_ctrl+".ConnectedCtrl")
 
         cmds.parent(rot_locator, tran_locator)
-        cmds.xform(rot_locator, ro=(0, 0, 0))
-        cmds.xform(rot_locator, t=(0, 0, 0))
+        cmds.xform(rot_locator, rotation=(0, 0, 0))
+        cmds.xform(rot_locator, translation=(0, 0, 0))
     
         jointParent = cmds.listRelatives(selected_joint, parent=True)[0]
         cmds.parent(tran_locator, jointParent)
         cmds.makeIdentity(tran_locator, apply=True, translate=True)
     
-        cmds.orientConstraint(selected_joint, tran_locator, w=1, mo=False)
-        cmds.parentConstraint(rot_locator, selected_ctrl, w=1, mo=True)
+        cmds.orientConstraint(selected_joint, tran_locator, maintainOffset=False)
+        cmds.parentConstraint(rot_locator, selected_ctrl, maintainOffset=True)
 
         # Lock and hide attributes
         cmds.setAttr(rot_locator+".tx", lock=True, keyable=False)
@@ -274,35 +276,54 @@ class RetargetWindow_UI(QtWidgets.QDialog):
 
         self.refresh_ui_list()
 
-    def align_a_to_b(self, a, b):
-        # Align point A to point B using the delta between the points
-        b_pos = cmds.xform(b, q=True, worldSpace=True, rotatePivot=True)
-        b_vec = om2.MVector(b_pos)
-        a_pos = cmds.xform(a, q=True, rotatePivot=True)
-        a_vec = om2.MVector(a_pos)
+    def scale_ctrl_shape(self, controller, size):
+        cmds.select(self.get_cvs(controller), replace=True)
+        cmds.scale(size, size, size) 
+        cmds.select(clear=True)
 
-        new_pos = b_vec - a_vec
-
-        cmds.xform(a, absolute=True, worldSpace=True, translation=new_pos)
+    def get_cvs(self, object):
+        children = cmds.listRelatives(object, type="shape", children=True)
+        ctrl_vertices = []
+        for c in children:
+            spans = int(cmds.getAttr(c+".spans")) + 1
+            vertices = "{shape}.cv[0:{count}]".format(shape=c, count=spans)
+            ctrl_vertices.append(vertices)
+        return ctrl_vertices
 
     def create_ctrl_locator(self, ctrl_shape_name):
-        ctrl = cmds.spaceLocator(name=ctrl_shape_name)[0]
-        cmds.setAttr(ctrl+".overrideEnabled", 1)
-        cmds.setAttr(ctrl+".overrideColor", self.maya_color_list[self.counter])
-        cmds.setAttr(ctrl+".localScaleX", 1)
-        cmds.setAttr(ctrl+".localScaleY", 1)
-        cmds.setAttr(ctrl+".localScaleZ", 1)
-        return ctrl
+        curves = []
+        curves.append(cmds.curve(degree=1, p=[(0, 0, 1), (0, 0, -1)], k=[0,1]))
+        curves.append(cmds.curve(degree=1, p=[(1, 0, 0), (-1, 0, 0)], k=[0,1]))
+        curves.append(cmds.curve(degree=1, p=[(0, 1, 0), (0, -1, 0)], k=[0,1]))
+
+        locator = self.combine_shapes(curves, ctrl_shape_name)
+        cmds.setAttr(locator+".overrideEnabled", 1)
+        cmds.setAttr(locator+".overrideColor", self.maya_color_list[self.counter])
+        return locator
 
     def create_ctrl_sphere(self, ctrl_shape_name):
-        ctrl = cmds.sphere(name=ctrl_shape_name)[0]
-        cmds.setAttr(ctrl+".overrideEnabled", 1)
-        cmds.setAttr(ctrl+".overrideColor", self.maya_color_list[self.counter])
-        cmds.setAttr(ctrl+".overrideShading", False)
-        cmds.setAttr(ctrl+".scaleX", 0.5)
-        cmds.setAttr(ctrl+".scaleY", 0.5)
-        cmds.setAttr(ctrl+".scaleZ", 0.5)
-        return ctrl
+        circles = []
+        for n in range(0, 5):
+            circles.append(cmds.circle(normal=(0,0,0), center=(0,0,0))[0])
+
+        cmds.rotate(0, 45, 0, circles[0])
+        cmds.rotate(0, -45, 0, circles[1])
+        cmds.rotate(0, -90, 0, circles[2])
+        cmds.rotate(90, 0, 0, circles[3])
+        sphere = self.combine_shapes(circles, ctrl_shape_name)
+        cmds.setAttr(sphere+".overrideEnabled", 1)
+        cmds.setAttr(sphere+".overrideColor", self.maya_color_list[self.counter])
+        self.scale_ctrl_shape(sphere, 0.5)
+        return sphere
+
+    def combine_shapes(self, shapes, ctrl_shape_name):
+        shape_nodes = cmds.listRelatives(shapes, shapes=True)
+        output_node = cmds.group(empty=True, name=ctrl_shape_name)
+        cmds.makeIdentity(shapes, apply=True, translate=True, rotate=True, scale=True)
+        cmds.parent(shape_nodes, output_node, shape=True, relative=True)
+        cmds.delete(shape_nodes, constructionHistory=True)
+        cmds.delete(shapes)
+        return output_node
 
     def bake_animation(self):
         confirm = cmds.confirmDialog(title="Confirm", message="Baking the animation will delete all the connection nodes. Do you wish to proceed?", button=["Yes","No"], defaultButton="Yes", cancelButton="No")
@@ -329,7 +350,7 @@ class RetargetWindow_UI(QtWidgets.QDialog):
             # Remove the message attribute from the controllers
             for ctrl in self.get_connected_ctrls():
                 try:
-                    cmds.deleteAttr(ctrl, at="ConnectedCtrl")
+                    cmds.deleteAttr(ctrl, attribute="ConnectedCtrl")
                 except:
                     pass
             
@@ -341,6 +362,20 @@ class RetargetWindow_UI(QtWidgets.QDialog):
     def help_dialog(self):
         dialog = cmds.confirmDialog(title="Instructions", message="To create a connection simply select the driver and then the driven and click 'Create connection'. For IK hands and IK feet controllers you can use 'Create IK Connection' for more complex retargeting. \n \nAs an example: if you want to transfer animation from a skeleton to a rig, first select the animated joint and then select the controller before you create a connection.", button=["Ok"], defaultButton="Ok", cancelButton="Ok")
         return dialog
+
+    def open_batch_window(self):
+        # try:
+        #     retarget_tool_ui.close()
+        #     retarget_tool_ui.deleteLater()
+        # except:
+        #     pass
+        try:
+            self.settings_window.close()
+            self.settings_window.deleteLater()
+        except:
+            pass
+        self.settings_window = BatchAnimationWindow()
+        self.settings_window.show()
 
 
 class ListItem_UI(QtWidgets.QWidget):
@@ -404,7 +439,7 @@ class ListItem_UI(QtWidgets.QWidget):
  
     def set_color(self):
         # Get the connection nodes, their ui element and the Maya override color list
-        connection_shapes = retarget_tool_ui.get_connect_nodes()
+        connection_node = retarget_tool_ui.get_connect_nodes()
         color = retarget_tool_ui.maya_color_list
         ui_items = retarget_tool_ui.connection_list
 
@@ -414,9 +449,9 @@ class ListItem_UI(QtWidgets.QWidget):
             retarget_tool_ui.counter = 0
 
         # Set the color on the connection node shape and button
-        for c in connection_shapes:
-            cmds.setAttr(c+".overrideEnabled", 1)
-            cmds.setAttr(c+".overrideColor", color[retarget_tool_ui.counter])
+        for con in connection_node:
+            cmds.setAttr(con+".overrideEnabled", 1)
+            cmds.setAttr(con+".overrideColor", color[retarget_tool_ui.counter])
 
         for i in ui_items:
             i.color_button.setStyleSheet("background-color:"+self.get_color())
@@ -425,17 +460,49 @@ class ListItem_UI(QtWidgets.QWidget):
         # Set the color of the button based on the color of the connection shape
         ctrl = self.shape_name
         current_color = cmds.getAttr(ctrl+".overrideColor")
- 
-        if current_color == 13:
-            return "red"
-        elif current_color == 18:
-            return "cyan"
-        elif current_color == 14:
-            return "green"
-        elif current_color == 17:
-            return "yellow"
-        else:
-            return "grey"
+        colors_dict = {"13":"red", "18":"cyan", "14":"green", "17":"yellow"}
+        color = colors_dict.get(str(current_color), "grey")
+        return color
+
+class BatchAnimationWindow(QtWidgets.QDialog):
+
+    WINDOW_TITLE = "Batch exporter"
+
+    def __init__(self):
+        super(BatchAnimationWindow, self).__init__(maya_main_window())
+        self.setWindowTitle(self.WINDOW_TITLE)
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+        
+        if cmds.about(macOS=True):
+            self.setWindowFlags(QtCore.Qt.Tool)
+
+        self.create_ui()
+        self.create_connections()
+
+    def create_ui(self):
+        file_list_widget = QtWidgets.QListWidget()
+        # file_list_widget.addItem("WHAT")
+        bind_file_line = QtWidgets.QLineEdit()
+        bind_file_line.setReadOnly(True)
+
+        load_bind_file_button = QtWidgets.QPushButton("Load Connection File")
+        load_anim_button = QtWidgets.QPushButton("Load Animations")
+        export_button = QtWidgets.QPushButton("Batch Export")
+        export_button.setStyleSheet("background-color: lightgreen; color: black")
+
+        file_type_combo = QtWidgets.QComboBox()
+        file_type_combo.addItems([".ma", ".fbx"])
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(bind_file_line)
+        main_layout.addWidget(file_list_widget)
+        main_layout.addWidget(file_type_combo)
+        main_layout.addWidget(load_anim_button)
+        main_layout.addWidget(load_bind_file_button)
+        main_layout.addWidget(export_button)
+
+    def create_connections(self):
+        pass    
 
 
 def start():

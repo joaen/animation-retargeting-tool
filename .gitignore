@@ -2,3 +2,5 @@
 .vscode/settings.json
 mocap_retargeting_tool.pyc
 .DS_Store
+animation_retargeting_tool/__init__.pyc
+animation_retargeting_tool/animation_retargeting_tool.pyc
