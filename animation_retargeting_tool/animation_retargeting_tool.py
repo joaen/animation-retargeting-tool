@@ -466,7 +466,7 @@ class ListItem_UI(QtWidgets.QWidget):
 
 class BatchAnimationWindow(QtWidgets.QDialog):
 
-    WINDOW_TITLE = "Batch exporter"
+    WINDOW_TITLE = "Batch Exporter"
 
     def __init__(self):
         super(BatchAnimationWindow, self).__init__(maya_main_window())
@@ -480,29 +480,69 @@ class BatchAnimationWindow(QtWidgets.QDialog):
         self.create_connections()
 
     def create_ui(self):
-        file_list_widget = QtWidgets.QListWidget()
+        self.file_list_widget = QtWidgets.QListWidget()
         # file_list_widget.addItem("WHAT")
-        bind_file_line = QtWidgets.QLineEdit()
-        bind_file_line.setReadOnly(True)
 
-        load_bind_file_button = QtWidgets.QPushButton("Load Connection File")
-        load_anim_button = QtWidgets.QPushButton("Load Animations")
-        export_button = QtWidgets.QPushButton("Batch Export")
+        # load_bind_file_button = QtWidgets.QPushButton("Load Connection File")
+        self.load_anim_button = QtWidgets.QPushButton("Load Animations")
+        export_button = QtWidgets.QPushButton("Batch Export Animations")
         export_button.setStyleSheet("background-color: lightgreen; color: black")
+        self.connection_file_line = QtWidgets.QLineEdit()
+        self.connection_filepath_button = QtWidgets.QPushButton()
+        self.connection_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
+        self.delete_selected_button = QtWidgets.QPushButton("Remove Selected")
+        # connection_filepath_button.setIconSize(10, 10)
+
+        output_file_line = QtWidgets.QLineEdit()
+        output_filepath_button = QtWidgets.QPushButton()
+        output_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
 
         file_type_combo = QtWidgets.QComboBox()
         file_type_combo.addItems([".ma", ".fbx"])
 
+        horizontal_layout_1 = QtWidgets.QHBoxLayout()
+        horizontal_layout_1.addWidget(QtWidgets.QLabel("Connection Rig File:"))
+        horizontal_layout_1.addWidget(self.connection_file_line)
+        horizontal_layout_1.addWidget(self.connection_filepath_button)
+
+        horizontal_layout_2 = QtWidgets.QHBoxLayout()
+        horizontal_layout_2.addWidget(self.load_anim_button)
+        horizontal_layout_2.addWidget(self.delete_selected_button)
+
+        horizontal_layout_3 = QtWidgets.QHBoxLayout()
+        horizontal_layout_3.addWidget(QtWidgets.QLabel("Output File Type:"))
+        horizontal_layout_3.addWidget(file_type_combo)
+        # horizontal_layout_3.addStretch()
+        horizontal_layout_3.addWidget(export_button)
+
         main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.addWidget(bind_file_line)
-        main_layout.addWidget(file_list_widget)
-        main_layout.addWidget(file_type_combo)
-        main_layout.addWidget(load_anim_button)
-        main_layout.addWidget(load_bind_file_button)
-        main_layout.addWidget(export_button)
+        main_layout.addWidget(self.file_list_widget)
+        # main_layout.addWidget(self.load_anim_button)
+        main_layout.addLayout(horizontal_layout_2)
+        main_layout.addLayout(horizontal_layout_1)
+        # main_layout.addWidget(file_type_combo)
+        main_layout.addLayout(horizontal_layout_3)
+        # main_layout.addWidget(export_button)
+
 
     def create_connections(self):
-        pass    
+        self.connection_filepath_button.clicked.connect(self.connection_filepath_dialog)
+        self.load_anim_button.clicked.connect(self.animation_filepath_dialog)
+
+    def connection_filepath_dialog(self):
+        file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Select Connection Rig File", "", "Maya ACSII (*.ma);;All files (*.*)")
+        if file_path[0]:
+            self.connection_file_line.setText(file_path[0])
+
+    def animation_filepath_dialog(self):
+        file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "Maya ACSII (*.ma);;FBX (*.fbx);;All files (*.*)")
+        file_path_list = file_paths[0]
+        #item_list = []
+        if file_path_list[0]:
+            for i in file_path_list:
+                self.file_list_widget.addItem(i)
+
+            self.file_list_widget.item(0).setTextColor(QtGui.QColor("red"))
 
 
 def start():
