@@ -14,11 +14,14 @@ animation_retargeting_tool.start()
  
 '''
 import sys
+from unittest import skip
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om2
 from shiboken2 import wrapInstance
 from PySide2 import QtCore, QtGui, QtWidgets
+import os
+import maya.mel
 
 
 def maya_main_window():
@@ -30,7 +33,7 @@ def maya_main_window():
         return wrapInstance(long(main_window), QtWidgets.QWidget) # type: ignore
 
 
-class RetargetWindow_UI(QtWidgets.QDialog):
+class RetargetingTool(QtWidgets.QDialog):
     '''
     The RetargetWindow_UI is the main UI window.
     When a new ListItem_UI is created it gets added to the RetargetWindow_UI
@@ -38,14 +41,14 @@ class RetargetWindow_UI(QtWidgets.QDialog):
     WINDOW_TITLE = "Animation Retargeting Tool"
  
     def __init__(self):
-        super(RetargetWindow_UI, self).__init__(maya_main_window())
+        super(RetargetingTool, self).__init__(maya_main_window())
         
         self.connection_list = []
         self.counter = 0
         self.maya_color_list = [13, 18, 14, 17]
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        self.resize(380, 300)
+        self.resize(400, 300)
         self.create_ui_widgets()
         self.create_ui_layout()
         self.create_ui_connections()
@@ -64,24 +67,25 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         self.help_button = QtWidgets.QPushButton("?")
         self.help_button.setFixedWidth(25)
  
-        self.rot_checkbox = QtWidgets.QCheckBox("Rot")
-        self.pos_checkbox = QtWidgets.QCheckBox("Trans")
+        self.rot_checkbox = QtWidgets.QCheckBox("Rotation")
+        self.pos_checkbox = QtWidgets.QCheckBox("Translation")
         self.mo_checkbox = QtWidgets.QCheckBox("Maintain Offset")
         self.snap_checkbox = QtWidgets.QCheckBox("Align To Position")
  
     def create_ui_layout(self):
-        upper_row_buttons = QtWidgets.QHBoxLayout()
-        upper_row_buttons.addWidget(self.simple_conn_button)
-        upper_row_buttons.addWidget(self.ik_conn_button)
-        upper_row_buttons.addWidget(self.pos_checkbox)
-        upper_row_buttons.addWidget(self.rot_checkbox)
-        upper_row_buttons.addWidget(self.snap_checkbox)
-        upper_row_buttons.addWidget(self.help_button)
-        upper_row_buttons.addStretch()
+        horizontal_layout_1 = QtWidgets.QHBoxLayout()
+        horizontal_layout_1.addWidget(self.pos_checkbox)
+        horizontal_layout_1.addWidget(self.rot_checkbox)
+        horizontal_layout_1.addWidget(self.snap_checkbox)
+        horizontal_layout_1.addStretch()
+        horizontal_layout_1.addWidget(self.help_button)
+        horizontal_layout_2 = QtWidgets.QHBoxLayout()
+        horizontal_layout_2.addWidget(self.simple_conn_button)
+        horizontal_layout_2.addWidget(self.ik_conn_button)
 
-        lower_row_buttons = QtWidgets.QHBoxLayout()
-        lower_row_buttons.addWidget(self.batch_bake_button)
-        lower_row_buttons.addWidget(self.bake_button)
+        horizontal_layout_3 = QtWidgets.QHBoxLayout()
+        horizontal_layout_3.addWidget(self.batch_bake_button)
+        horizontal_layout_3.addWidget(self.bake_button)
  
         connection_list_widget = QtWidgets.QWidget()
  
@@ -93,18 +97,24 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         list_scroll_area = QtWidgets.QScrollArea()
         list_scroll_area.setWidgetResizable(True)
         list_scroll_area.setWidget(connection_list_widget)
+
+        separator_line = QtWidgets.QFrame(parent=None)
+        separator_line.setFrameShape(QtWidgets.QFrame.HLine)
+        separator_line.setFrameShadow(QtWidgets.QFrame.Sunken)
  
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.addWidget(list_scroll_area)
-        main_layout.addLayout(upper_row_buttons)
-        main_layout.addLayout(lower_row_buttons)
+        main_layout.addLayout(horizontal_layout_1)
+        main_layout.addLayout(horizontal_layout_2)
+        main_layout.addWidget(separator_line)
+        main_layout.addLayout(horizontal_layout_3)
  
     def create_ui_connections(self):
         self.simple_conn_button.clicked.connect(self.create_connection_node)
         self.ik_conn_button.clicked.connect(self.create_ik_connection_node)
         self.refresh_button.clicked.connect(self.refresh_ui_list)
-        self.bake_button.clicked.connect(self.bake_animation)
+        self.bake_button.clicked.connect(self.bake_animation_confirm)
         self.batch_bake_button.clicked.connect(self.open_batch_window)
         self.help_button.clicked.connect(self.help_dialog)
 
@@ -112,6 +122,7 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         self.pos_checkbox.setChecked(True)
         self.snap_checkbox.setChecked(True)
  
+    @classmethod
     def get_connect_nodes(self):
         connect_nodes_in_scene = []
         for i in cmds.ls():
@@ -121,6 +132,7 @@ class RetargetWindow_UI(QtWidgets.QDialog):
                 pass
         return connect_nodes_in_scene
 
+    @classmethod
     def get_connected_ctrls(self):
         connected_ctrls_in_scene = []
         for i in cmds.ls():
@@ -325,13 +337,20 @@ class RetargetWindow_UI(QtWidgets.QDialog):
         cmds.delete(shapes)
         return output_node
 
-    def bake_animation(self):
+    def bake_animation_confirm(self):
         confirm = cmds.confirmDialog(title="Confirm", message="Baking the animation will delete all the connection nodes. Do you wish to proceed?", button=["Yes","No"], defaultButton="Yes", cancelButton="No")
+        if confirm == "Yes":
+            self.bake_animation()
+        if confirm == "No":
+            pass
+        self.refresh_ui_list()
 
-        if confirm == "Yes" and len(self.get_connected_ctrls()) == 0:
+    @classmethod
+    def bake_animation(self):
+
+        if len(self.get_connected_ctrls()) == 0:
             cmds.warning("No connections found in scene!")
-
-        if confirm == "Yes" and len(self.get_connected_ctrls()) != 0:
+        if len(self.get_connected_ctrls()) != 0:
             time_min = cmds.playbackOptions(query=True, min=True)
             time_max = cmds.playbackOptions(query=True, max=True)
 
@@ -353,28 +372,18 @@ class RetargetWindow_UI(QtWidgets.QDialog):
                     cmds.deleteAttr(ctrl, attribute="ConnectedCtrl")
                 except:
                     pass
-            
-            self.refresh_ui_list()
-
-        if confirm == "No":
-            pass
 
     def help_dialog(self):
         dialog = cmds.confirmDialog(title="Instructions", message="To create a connection simply select the driver and then the driven and click 'Create connection'. For IK hands and IK feet controllers you can use 'Create IK Connection' for more complex retargeting. \n \nAs an example: if you want to transfer animation from a skeleton to a rig, first select the animated joint and then select the controller before you create a connection.", button=["Ok"], defaultButton="Ok", cancelButton="Ok")
         return dialog
 
     def open_batch_window(self):
-        # try:
-        #     retarget_tool_ui.close()
-        #     retarget_tool_ui.deleteLater()
-        # except:
-        #     pass
         try:
             self.settings_window.close()
             self.settings_window.deleteLater()
         except:
             pass
-        self.settings_window = BatchAnimationWindow()
+        self.settings_window = BatchExport()
         self.settings_window.show()
 
 
@@ -464,14 +473,17 @@ class ListItem_UI(QtWidgets.QWidget):
         color = colors_dict.get(str(current_color), "grey")
         return color
 
-class BatchAnimationWindow(QtWidgets.QDialog):
+class BatchExport(QtWidgets.QDialog):
 
     WINDOW_TITLE = "Batch Exporter"
 
     def __init__(self):
-        super(BatchAnimationWindow, self).__init__(maya_main_window())
+        super(BatchExport, self).__init__(maya_main_window())
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+        self.resize(400, 300)
+        self.animation_clip_paths = []
+        self.output_folder = ""
         
         if cmds.about(macOS=True):
             self.setWindowFlags(QtCore.Qt.Tool)
@@ -481,24 +493,22 @@ class BatchAnimationWindow(QtWidgets.QDialog):
 
     def create_ui(self):
         self.file_list_widget = QtWidgets.QListWidget()
-        # file_list_widget.addItem("WHAT")
-
-        # load_bind_file_button = QtWidgets.QPushButton("Load Connection File")
+        self.delete_selected_button = QtWidgets.QPushButton("Remove Selected")
+        self.delete_selected_button.setFixedHeight(24)
         self.load_anim_button = QtWidgets.QPushButton("Load Animations")
-        export_button = QtWidgets.QPushButton("Batch Export Animations")
-        export_button.setStyleSheet("background-color: lightgreen; color: black")
+        self.load_anim_button.setFixedHeight(24)
+        self.export_button = QtWidgets.QPushButton("Batch Export Animations")
+        self.export_button.setStyleSheet("background-color: lightgreen; color: black")
         self.connection_file_line = QtWidgets.QLineEdit()
         self.connection_filepath_button = QtWidgets.QPushButton()
         self.connection_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
-        self.delete_selected_button = QtWidgets.QPushButton("Remove Selected")
-        # connection_filepath_button.setIconSize(10, 10)
+        self.connection_filepath_button.setFixedSize(24, 24)
 
-        output_file_line = QtWidgets.QLineEdit()
         output_filepath_button = QtWidgets.QPushButton()
         output_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
 
-        file_type_combo = QtWidgets.QComboBox()
-        file_type_combo.addItems([".ma", ".fbx"])
+        self.file_type_combo = QtWidgets.QComboBox()
+        self.file_type_combo.addItems([".ma", ".fbx"])
 
         horizontal_layout_1 = QtWidgets.QHBoxLayout()
         horizontal_layout_1.addWidget(QtWidgets.QLabel("Connection Rig File:"))
@@ -511,38 +521,76 @@ class BatchAnimationWindow(QtWidgets.QDialog):
 
         horizontal_layout_3 = QtWidgets.QHBoxLayout()
         horizontal_layout_3.addWidget(QtWidgets.QLabel("Output File Type:"))
-        horizontal_layout_3.addWidget(file_type_combo)
-        # horizontal_layout_3.addStretch()
-        horizontal_layout_3.addWidget(export_button)
+        horizontal_layout_3.addWidget(self.file_type_combo)
+        horizontal_layout_3.addWidget(self.export_button)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.addWidget(self.file_list_widget)
-        # main_layout.addWidget(self.load_anim_button)
         main_layout.addLayout(horizontal_layout_2)
         main_layout.addLayout(horizontal_layout_1)
-        # main_layout.addWidget(file_type_combo)
         main_layout.addLayout(horizontal_layout_3)
-        # main_layout.addWidget(export_button)
 
 
     def create_connections(self):
         self.connection_filepath_button.clicked.connect(self.connection_filepath_dialog)
         self.load_anim_button.clicked.connect(self.animation_filepath_dialog)
+        self.export_button.clicked.connect(self.batch_action)
 
     def connection_filepath_dialog(self):
         file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Select Connection Rig File", "", "Maya ACSII (*.ma);;All files (*.*)")
         if file_path[0]:
             self.connection_file_line.setText(file_path[0])
 
+    def output_filepath_dialog(self):
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select export folder path", "")
+        if folder_path:
+            self.output_folder = folder_path
+
     def animation_filepath_dialog(self):
         file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "Maya ACSII (*.ma);;FBX (*.fbx);;All files (*.*)")
         file_path_list = file_paths[0]
-        #item_list = []
+        self.animation_clip_paths = []
         if file_path_list[0]:
             for i in file_path_list:
                 self.file_list_widget.addItem(i)
+                self.animation_clip_paths.append(i)
 
-            self.file_list_widget.item(0).setTextColor(QtGui.QColor("red"))
+            # self.file_list_widget.item(0).setTextColor(QtGui.QColor("red"))
+
+    def batch_action(self):
+        self.output_filepath_dialog()
+        self.bake_export()
+
+    def bake_export(self):
+        # connection_file = self.connection_file_line.text()
+        # animation_clip_paths = self.animation_clip_paths
+        # anim_files = [f for f in os.listdir(anim_path) if os.path.isfile(os.path.join(anim_path, f)) and str(os.path.join(anim_path, f)).endswith(".fbx")]
+        # output_folder = ""
+
+        for i, path in enumerate(self.animation_clip_paths):
+            # Import connection file and animation clip
+            cmds.file(new=True, force=True) 
+            cmds.file(self.connection_file_line.text(), open=True)
+            maya.mel.eval('FBXImportMode -v "exmerge";')
+            maya.mel.eval('FBXImport -file "{}";'.format(path))
+            
+            # Bake animation
+            RetargetingTool.bake_animation()
+            
+            # Export animation
+            # cmds.select("human:rig", replace=True)
+            
+            output_path = self.output_folder + "/" + os.path.basename(path)
+            if self.file_type_combo.currentText == ".fbx":
+                # pm.mel.eval('FBXLoadExportPresetFile -f "' + mt_common_utils.sanitize(self.fbx_export_preset_file) + '"')
+                maya.mel.eval('FBXExport -f "{}" -s'.format(output_path))
+            if self.file_type_combo.currentText == ".ma":
+                pass
+
+            if os.path.exists(output_path):
+                self.file_list_widget.item(i).setTextColor(QtGui.QColor("green"))
+            else:
+                self.file_list_widget.item(i).setTextColor(QtGui.QColor("red"))
 
 
 def start():
@@ -552,7 +600,7 @@ def start():
         retarget_tool_ui.deleteLater()
     except:
         pass
-    retarget_tool_ui = RetargetWindow_UI()
+    retarget_tool_ui = RetargetingTool()
     retarget_tool_ui.show()
 
 if __name__ == "__main__":
