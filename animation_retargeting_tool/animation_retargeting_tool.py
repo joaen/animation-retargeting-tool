@@ -555,18 +555,11 @@ class BatchExport(QtWidgets.QDialog):
                 self.file_list_widget.addItem(i)
                 self.animation_clip_paths.append(i)
 
-            # self.file_list_widget.item(0).setTextColor(QtGui.QColor("red"))
-
     def batch_action(self):
         self.output_filepath_dialog()
         self.bake_export()
 
     def bake_export(self):
-        # connection_file = self.connection_file_line.text()
-        # animation_clip_paths = self.animation_clip_paths
-        # anim_files = [f for f in os.listdir(anim_path) if os.path.isfile(os.path.join(anim_path, f)) and str(os.path.join(anim_path, f)).endswith(".fbx")]
-        # output_folder = ""
-
         for i, path in enumerate(self.animation_clip_paths):
             # Import connection file and animation clip
             cmds.file(new=True, force=True) 
