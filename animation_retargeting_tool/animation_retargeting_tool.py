@@ -504,7 +504,7 @@ class BatchExport(QtWidgets.QDialog):
         self.connection_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
         self.connection_filepath_button.setFixedSize(24, 24)
 
-        self.export_selected_label = QtWidgets.QLabel("Export Selected (Optional):")
+        self.export_selected_label = QtWidgets.QLabel("Export Selected:")
         self.export_selected_line = QtWidgets.QLineEdit()
         self.export_selected_button = QtWidgets.QPushButton()
         self.export_selected_button.setIcon(QtGui.QIcon(":addClip.png"))
@@ -542,7 +542,6 @@ class BatchExport(QtWidgets.QDialog):
         main_layout.addLayout(horizontal_layout_4)
         main_layout.addLayout(horizontal_layout_3)
 
-
     def create_connections(self):
         self.connection_filepath_button.clicked.connect(self.connection_filepath_dialog)
         self.load_anim_button.clicked.connect(self.animation_filepath_dialog)
@@ -559,6 +558,9 @@ class BatchExport(QtWidgets.QDialog):
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select export folder path", "")
         if folder_path:
             self.output_folder = folder_path
+            return True
+        else:
+            return False
 
     def animation_filepath_dialog(self):
         file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;Maya ACSII (*.ma);;All files (*.*)")
@@ -597,8 +599,18 @@ class BatchExport(QtWidgets.QDialog):
             pass
 
     def batch_action(self):
-        self.output_filepath_dialog()
-        self.bake_export()
+        if self.export_selected_line.text() == "":
+            cmds.warning("'Export Selected' textfield is empty. Add which nodes should be exported in the textfield. Eg. a skeleton.")
+        elif self.connection_file_line.text() == "":
+            cmds.warning("Connection file textfield is empty. Add a connection rig file to be able to export. This file should contain the rig and connections to a skeleton.")
+        elif self.file_list_widget.count() == 0:
+            cmds.warning("Animation clip list is empty. Add animation clips to the list to be able to export!")
+        else:
+            confirm_dialog = self.output_filepath_dialog()
+            if confirm_dialog == True:
+                self.bake_export()
+            else:
+                pass
 
     def bake_export(self):
         number_of_operations = len(self.animation_clip_paths) * 3
@@ -606,7 +618,7 @@ class BatchExport(QtWidgets.QDialog):
         progress_dialog = QtWidgets.QProgressDialog("Baking and exporting animation clips", "Cancel", 0, number_of_operations, self)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        progress_dialog.setCancelButton(None)
+        # progress_dialog.setCancelButton(None)
         progress_dialog.setValue(0)
         progress_dialog.setWindowTitle("Progress...")
         progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
