@@ -14,10 +14,8 @@ animation_retargeting_tool.start()
  
 '''
 import sys
-from unittest import skip
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
-import maya.api.OpenMaya as om2
 from shiboken2 import wrapInstance
 from PySide2 import QtCore, QtGui, QtWidgets
 import os
@@ -409,23 +407,25 @@ class ListItem_UI(QtWidgets.QWidget):
         self.sel_button = QtWidgets.QPushButton()
         self.sel_button.setStyleSheet("background-color: #707070")
         self.sel_button.setText("Select")
+        self.sel_button.setFixedWidth(80)
  
         self.del_button = QtWidgets.QPushButton()
         self.del_button.setStyleSheet("background-color: #707070")
         self.del_button.setText("Delete")
- 
+        self.del_button.setFixedWidth(80)
+
         self.transform_name_label = QtWidgets.QLabel(self.shape_name)
-        self.transform_name_label.setFixedWidth(280)
         self.transform_name_label.setAlignment(QtCore.Qt.AlignCenter)
  
     def create_ui_layout(self):
         main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.setContentsMargins(5, 5, 0, 0)
+        main_layout.setContentsMargins(5, 5, 20, 0)
         main_layout.addWidget(self.color_button)
         main_layout.addWidget(self.transform_name_label)
+        # main_layout.addStretch()
         main_layout.addWidget(self.sel_button)
         main_layout.addWidget(self.del_button)
-        main_layout.addStretch()
+        # main_layout.addStretch()
  
     def create_ui_connections(self):
         self.sel_button.clicked.connect(self.select_connection_node)
@@ -493,8 +493,8 @@ class BatchExport(QtWidgets.QDialog):
 
     def create_ui(self):
         self.file_list_widget = QtWidgets.QListWidget()
-        self.delete_selected_button = QtWidgets.QPushButton("Remove Selected")
-        self.delete_selected_button.setFixedHeight(24)
+        self.remove_selected_button = QtWidgets.QPushButton("Remove Selected")
+        self.remove_selected_button.setFixedHeight(24)
         self.load_anim_button = QtWidgets.QPushButton("Load Animations")
         self.load_anim_button.setFixedHeight(24)
         self.export_button = QtWidgets.QPushButton("Batch Export Animations")
@@ -504,11 +504,17 @@ class BatchExport(QtWidgets.QDialog):
         self.connection_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
         self.connection_filepath_button.setFixedSize(24, 24)
 
-        output_filepath_button = QtWidgets.QPushButton()
-        output_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
+        self.export_selected_label = QtWidgets.QLabel("Export Selected (Optional):")
+        self.export_selected_line = QtWidgets.QLineEdit()
+        self.export_selected_button = QtWidgets.QPushButton()
+        self.export_selected_button.setIcon(QtGui.QIcon(":addClip.png"))
+        self.export_selected_button.setFixedSize(24, 24)
+
+        self.output_filepath_button = QtWidgets.QPushButton()
+        self.output_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
 
         self.file_type_combo = QtWidgets.QComboBox()
-        self.file_type_combo.addItems([".ma", ".fbx"])
+        self.file_type_combo.addItems([".fbx", ".ma"])
 
         horizontal_layout_1 = QtWidgets.QHBoxLayout()
         horizontal_layout_1.addWidget(QtWidgets.QLabel("Connection Rig File:"))
@@ -517,17 +523,23 @@ class BatchExport(QtWidgets.QDialog):
 
         horizontal_layout_2 = QtWidgets.QHBoxLayout()
         horizontal_layout_2.addWidget(self.load_anim_button)
-        horizontal_layout_2.addWidget(self.delete_selected_button)
+        horizontal_layout_2.addWidget(self.remove_selected_button)
 
         horizontal_layout_3 = QtWidgets.QHBoxLayout()
         horizontal_layout_3.addWidget(QtWidgets.QLabel("Output File Type:"))
         horizontal_layout_3.addWidget(self.file_type_combo)
         horizontal_layout_3.addWidget(self.export_button)
 
+        horizontal_layout_4 = QtWidgets.QHBoxLayout()
+        horizontal_layout_4.addWidget(self.export_selected_label)
+        horizontal_layout_4.addWidget(self.export_selected_line)
+        horizontal_layout_4.addWidget(self.export_selected_button)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.addWidget(self.file_list_widget)
         main_layout.addLayout(horizontal_layout_2)
         main_layout.addLayout(horizontal_layout_1)
+        main_layout.addLayout(horizontal_layout_4)
         main_layout.addLayout(horizontal_layout_3)
 
 
@@ -535,6 +547,8 @@ class BatchExport(QtWidgets.QDialog):
         self.connection_filepath_button.clicked.connect(self.connection_filepath_dialog)
         self.load_anim_button.clicked.connect(self.animation_filepath_dialog)
         self.export_button.clicked.connect(self.batch_action)
+        self.export_selected_button.clicked.connect(self.add_selected_action)
+        self.remove_selected_button.clicked.connect(self.remove_selected_item)
 
     def connection_filepath_dialog(self):
         file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Select Connection Rig File", "", "Maya ACSII (*.ma);;All files (*.*)")
@@ -547,43 +561,96 @@ class BatchExport(QtWidgets.QDialog):
             self.output_folder = folder_path
 
     def animation_filepath_dialog(self):
-        file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "Maya ACSII (*.ma);;FBX (*.fbx);;All files (*.*)")
+        file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;Maya ACSII (*.ma);;All files (*.*)")
         file_path_list = file_paths[0]
         self.animation_clip_paths = []
+
         if file_path_list[0]:
             for i in file_path_list:
                 self.file_list_widget.addItem(i)
                 self.animation_clip_paths.append(i)
+        
+        for i in range(0, self.file_list_widget.count()):
+            self.file_list_widget.item(i).setTextColor(QtGui.QColor("white"))
+
+    def add_selected_action(self):
+        selection = cmds.ls(selection=True)
+        if len(selection) > 1:
+            text_string = "["
+            for i in selection:
+                text_string += '"{}", '.format(i)
+            text_string = text_string[:-2]
+            text_string += "]"
+        elif selection[0]:
+            text_string = "{}".format(selection[0])
+        else:
+            pass
+
+        self.export_selected_line.setText(text_string)
+
+    def remove_selected_item(self):
+        try:
+            selected_items = self.file_list_widget.selectedItems()
+            for item in selected_items:
+                self.file_list_widget.takeItem(self.file_list_widget.row(item))
+        except:
+            pass
 
     def batch_action(self):
         self.output_filepath_dialog()
         self.bake_export()
 
     def bake_export(self):
+        number_of_operations = len(self.animation_clip_paths) * 3
+        current_operation = 0
+        progress_dialog = QtWidgets.QProgressDialog("Baking and exporting animation clips", "Cancel", 0, number_of_operations, self)
+        progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
+        progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+        progress_dialog.setCancelButton(None)
+        progress_dialog.setValue(0)
+        progress_dialog.setWindowTitle("Progress...")
+        progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
+        progress_dialog.show()
+        QtCore.QCoreApplication.processEvents()
+
         for i, path in enumerate(self.animation_clip_paths):
             # Import connection file and animation clip
-            cmds.file(new=True, force=True) 
+            self.file_list_widget.item(i).setTextColor(QtGui.QColor("yellow"))
+            cmds.file(new=True, force=True)
             cmds.file(self.connection_file_line.text(), open=True)
             maya.mel.eval('FBXImportMode -v "exmerge";')
             maya.mel.eval('FBXImport -file "{}";'.format(path))
-            
+            current_operation += 1
+            progress_dialog.setValue(current_operation) 
+
             # Bake animation
             RetargetingTool.bake_animation()
-            
-            # Export animation
-            # cmds.select("human:rig", replace=True)
-            
+            current_operation += 1
+            progress_dialog.setValue(current_operation) 
+
+            # Export animation            
             output_path = self.output_folder + "/" + os.path.basename(path)
-            if self.file_type_combo.currentText == ".fbx":
-                # pm.mel.eval('FBXLoadExportPresetFile -f "' + mt_common_utils.sanitize(self.fbx_export_preset_file) + '"')
+            if self.file_type_combo.currentText() == ".fbx":
+                # mel.eval('FBXLoadExportPresetFile -f)
+                cmds.select(self.export_selected_line.text(), replace=True)
                 maya.mel.eval('FBXExport -f "{}" -s'.format(output_path))
-            if self.file_type_combo.currentText == ".ma":
-                pass
+            if self.file_type_combo.currentText() == ".ma":
+                cmds.file(rename=path)
+                cmds.select(self.export_selected_line.text(), replace=True)
+                cmds.file(exportSelected=True, type="mayaAscii")
+            
+            current_operation += 1
+            progress_dialog.setValue(current_operation)        
 
             if os.path.exists(output_path):
-                self.file_list_widget.item(i).setTextColor(QtGui.QColor("green"))
+                self.file_list_widget.item(i).setTextColor(QtGui.QColor("lime"))
+                print("Exported to: "+output_path)
             else:
                 self.file_list_widget.item(i).setTextColor(QtGui.QColor("red"))
+                print("Warning! Export to this path failed: "+output_path)
+
+        progress_dialog.setValue(number_of_operations)
+        progress_dialog.close()
 
 
 def start():
