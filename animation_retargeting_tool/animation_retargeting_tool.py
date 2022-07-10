@@ -13,13 +13,14 @@ import animation_retargeting_tool
 animation_retargeting_tool.start()
  
 '''
+import os
 import sys
+import maya.mel
 import maya.cmds as cmds
+from functools import partial
 import maya.OpenMayaUI as omui
 from shiboken2 import wrapInstance
 from PySide2 import QtCore, QtGui, QtWidgets
-import os
-import maya.mel
 
 
 def maya_main_window():
@@ -33,14 +34,14 @@ def maya_main_window():
 
 class RetargetingTool(QtWidgets.QDialog):
     '''
-    The RetargetWindow_UI is the main UI window.
-    When a new ListItem_UI is created it gets added to the RetargetWindow_UI
+    Retargeting tool class
     ''' 
     WINDOW_TITLE = "Animation Retargeting Tool"
  
     def __init__(self):
         super(RetargetingTool, self).__init__(maya_main_window())
         
+        self.script_job_ids = []
         self.connection_list = []
         self.counter = 0
         self.maya_color_list = [13, 18, 14, 17]
@@ -50,6 +51,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.create_ui_widgets()
         self.create_ui_layout()
         self.create_ui_connections()
+        self.create_script_jobs()
 
         if cmds.about(macOS=True):
             self.setWindowFlags(QtCore.Qt.Tool)
@@ -139,6 +141,17 @@ class RetargetingTool(QtWidgets.QDialog):
             else:
                 pass
         return connected_ctrls_in_scene
+
+    def create_script_jobs(self):
+        self.script_job_ids.append(cmds.scriptJob(event=["SelectionChanged", partial(self.refresh_ui_list)]))
+        self.script_job_ids.append(cmds.scriptJob(event=["NameChanged", partial(self.refresh_ui_list)]))
+
+    def kill_script_jobs(self):
+        for id in self.script_job_ids:
+            if cmds.scriptJob(exists=id):
+                cmds.scriptJob(kill=id)
+            else:
+                pass
  
     def refresh_ui_list(self):
         self.clear_list()
@@ -186,6 +199,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.refresh_ui_list()
  
     def closeEvent(self, event):
+        self.kill_script_jobs()
         self.clear_list()
 
     def create_connection_node(self):
@@ -387,8 +401,8 @@ class RetargetingTool(QtWidgets.QDialog):
 
 class ListItem_UI(QtWidgets.QWidget):
     '''
-    UI item.
-    When a new List Item is created it gets added to the RetargetWindow_UI
+    UI item class.
+    When a new List Item is created it gets added to the connection_list_widget in the RetargetingTool class.
     '''
     def __init__(self, shape_name, parent=None):
         super(ListItem_UI, self).__init__(parent)
@@ -474,14 +488,16 @@ class ListItem_UI(QtWidgets.QWidget):
         return color
 
 class BatchExport(QtWidgets.QDialog):
-
+    '''
+    Batch exporter class
+    ''' 
     WINDOW_TITLE = "Batch Exporter"
 
     def __init__(self):
         super(BatchExport, self).__init__(maya_main_window())
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        self.resize(400, 300)
+        self.resize(400, 250)
         self.animation_clip_paths = []
         self.output_folder = ""
         
@@ -500,12 +516,14 @@ class BatchExport(QtWidgets.QDialog):
         self.export_button = QtWidgets.QPushButton("Batch Export Animations")
         self.export_button.setStyleSheet("background-color: lightgreen; color: black")
         self.connection_file_line = QtWidgets.QLineEdit()
+        self.connection_file_line.setToolTip("Enter the file path to the connection rig file. A file which contains a rig with connections.")
         self.connection_filepath_button = QtWidgets.QPushButton()
         self.connection_filepath_button.setIcon(QtGui.QIcon(":fileOpen.png"))
         self.connection_filepath_button.setFixedSize(24, 24)
 
-        self.export_selected_label = QtWidgets.QLabel("Export Selected:")
+        self.export_selected_label = QtWidgets.QLabel("Export Selected (Optional):")
         self.export_selected_line = QtWidgets.QLineEdit()
+        self.export_selected_line.setToolTip("Enter the name(s) of the nodes that should be exported. Leave blank to export all.")
         self.export_selected_button = QtWidgets.QPushButton()
         self.export_selected_button.setIcon(QtGui.QIcon(":addClip.png"))
         self.export_selected_button.setFixedSize(24, 24)
@@ -599,9 +617,7 @@ class BatchExport(QtWidgets.QDialog):
             pass
 
     def batch_action(self):
-        if self.export_selected_line.text() == "":
-            cmds.warning("'Export Selected' textfield is empty. Add which nodes should be exported in the textfield. Eg. a skeleton.")
-        elif self.connection_file_line.text() == "":
+        if self.connection_file_line.text() == "":
             cmds.warning("Connection file textfield is empty. Add a connection rig file to be able to export. This file should contain the rig and connections to a skeleton.")
         elif self.file_list_widget.count() == 0:
             cmds.warning("Animation clip list is empty. Add animation clips to the list to be able to export!")
@@ -618,12 +634,12 @@ class BatchExport(QtWidgets.QDialog):
         progress_dialog = QtWidgets.QProgressDialog("Baking and exporting animation clips", "Cancel", 0, number_of_operations, self)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-        # progress_dialog.setCancelButton(None)
         progress_dialog.setValue(0)
         progress_dialog.setWindowTitle("Progress...")
         progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
         progress_dialog.show()
         QtCore.QCoreApplication.processEvents()
+        export_result = []
 
         for i, path in enumerate(self.animation_clip_paths):
             # Import connection file and animation clip
@@ -641,25 +657,40 @@ class BatchExport(QtWidgets.QDialog):
             progress_dialog.setValue(current_operation) 
 
             # Export animation            
-            output_path = self.output_folder + "/" + os.path.basename(path)
+            output_path = self.output_folder + "/" + os.path.splitext(os.path.basename(path))[0]
             if self.file_type_combo.currentText() == ".fbx":
+                output_path += ".fbx"
+                cmds.file(rename=output_path)
+                # Would like to add the ability to load a FBX export preset file
                 # mel.eval('FBXLoadExportPresetFile -f)
-                cmds.select(self.export_selected_line.text(), replace=True)
-                maya.mel.eval('FBXExport -f "{}" -s'.format(output_path))
-            if self.file_type_combo.currentText() == ".ma":
-                cmds.file(rename=path)
-                cmds.select(self.export_selected_line.text(), replace=True)
-                cmds.file(exportSelected=True, type="mayaAscii")
+                if self.export_selected_line.text() != "":
+                    cmds.select(self.export_selected_line.text(), replace=True)
+                    maya.mel.eval('FBXExport -f "{}" -s'.format(output_path))
+                else:
+                    maya.mel.eval('FBXExport -f "{}"'.format(output_path))
+            elif self.file_type_combo.currentText() == ".ma":
+                output_path += ".ma"
+                cmds.file(rename=output_path)
+                if self.export_selected_line.text() != "":
+                    cmds.select(self.export_selected_line.text(), replace=True)
+                    cmds.file(exportSelected=True, type="mayaAscii")
+                else:
+                    cmds.file(exportAll=True, type="mayaAscii")
             
             current_operation += 1
             progress_dialog.setValue(current_operation)        
 
             if os.path.exists(output_path):
                 self.file_list_widget.item(i).setTextColor(QtGui.QColor("lime"))
-                print("Exported to: "+output_path)
+                export_result.append("Sucessfully exported: "+output_path)
+
             else:
                 self.file_list_widget.item(i).setTextColor(QtGui.QColor("red"))
-                print("Warning! Export to this path failed: "+output_path)
+                export_result.append("Failed exporting: "+output_path)
+        
+        print("------")
+        for i in export_result:
+            print(i)
 
         progress_dialog.setValue(number_of_operations)
         progress_dialog.close()
