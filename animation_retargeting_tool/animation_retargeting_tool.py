@@ -581,7 +581,7 @@ class BatchExport(QtWidgets.QDialog):
             return False
 
     def animation_filepath_dialog(self):
-        file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;Maya ACSII (*.ma);;All files (*.*)")
+        file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;All files (*.*)")
         file_path_list = file_paths[0]
         self.animation_clip_paths = []
 
