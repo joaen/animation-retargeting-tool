@@ -562,12 +562,12 @@ class BatchExport(QtWidgets.QDialog):
     def animation_filepath_dialog(self):
         file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;All files (*.*)")
         file_path_list = file_paths[0]
-        self.animation_clip_paths = []
+        # self.animation_clip_paths = []
 
         if file_path_list[0]:
             for i in file_path_list:
                 self.file_list_widget.addItem(i)
-                self.animation_clip_paths.append(i)
+                # self.animation_clip_paths.append(i)
         
         for i in range(0, self.file_list_widget.count()):
             self.file_list_widget.item(i).setTextColor(QtGui.QColor("white"))
@@ -608,9 +608,13 @@ class BatchExport(QtWidgets.QDialog):
                 pass
 
     def bake_export(self):
+        self.animation_clip_paths = []
+        for i in range(self.file_list_widget.count()):
+            self.animation_clip_paths.append(self.file_list_widget.item(i).text())
+
         number_of_operations = len(self.animation_clip_paths) * 3
         current_operation = 0
-        progress_dialog = QtWidgets.QProgressDialog("Baking and exporting animation clips", "Cancel", 0, number_of_operations, self)
+        progress_dialog = QtWidgets.QProgressDialog("Preparing", "Cancel", 0, number_of_operations, self)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
         progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         progress_dialog.setValue(0)
@@ -622,6 +626,7 @@ class BatchExport(QtWidgets.QDialog):
 
         for i, path in enumerate(self.animation_clip_paths):
             # Import connection file and animation clip
+            progress_dialog.setLabelText("Baking and exporting {} of {}".format(i + 1, len(self.animation_clip_paths)))
             self.file_list_widget.item(i).setTextColor(QtGui.QColor("yellow"))
             cmds.file(new=True, force=True)
             cmds.file(self.connection_file_line.text(), open=True)
