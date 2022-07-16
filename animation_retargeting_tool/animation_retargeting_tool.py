@@ -121,26 +121,6 @@ class RetargetingTool(QtWidgets.QDialog):
         self.rot_checkbox.setChecked(True)
         self.pos_checkbox.setChecked(True)
         self.snap_checkbox.setChecked(True)
- 
-    @classmethod
-    def get_connect_nodes(self):
-        connect_nodes_in_scene = []
-        for i in cmds.ls():
-            if cmds.attributeQuery("ConnectNode", node=i, exists=True) == True:
-                connect_nodes_in_scene.append(i)
-            else:
-                pass
-        return connect_nodes_in_scene
-
-    @classmethod
-    def get_connected_ctrls(self):
-        connected_ctrls_in_scene = []
-        for i in cmds.ls():
-            if cmds.attributeQuery("ConnectedCtrl", node=i, exists=True) == True:
-                connected_ctrls_in_scene.append(i)
-            else:
-                pass
-        return connected_ctrls_in_scene
 
     def create_script_jobs(self):
         self.script_job_ids.append(cmds.scriptJob(event=["SelectionChanged", partial(self.refresh_ui_list)]))
@@ -171,30 +151,6 @@ class RetargetingTool(QtWidgets.QDialog):
             if connection_ui_item.widget():
                 connection_ui_item.widget().deleteLater() 
  
-    def get_snap_checkbox(self):
-        if self.snap_checkbox.isChecked() == True:
-            return True
-        else:
-            return False
-
-    def get_mo_checkbox(self):
-        if self.mo_checkbox.isChecked() == True:
-            return True
-        else:
-            return False
- 
-    def get_rot_checkbox(self):
-        if self.rot_checkbox.isChecked() == True:
-            return True
-        else:
-            return False
-    
-    def get_pos_checkbox(self):
-        if self.pos_checkbox.isChecked() == True:
-            return True
-        else:
-            return False
- 
     def showEvent(self, event):
         self.refresh_ui_list()
  
@@ -209,15 +165,15 @@ class RetargetingTool(QtWidgets.QDialog):
         except:
             return cmds.warning("No selections!")
 
-        if retarget_tool_ui.get_snap_checkbox() == True:
+        if self.snap_checkbox.isChecked() == True:
             cmds.matchTransform(selected_ctrl, selected_joint, pos=True)
         else:
             pass
         
-        if retarget_tool_ui.get_rot_checkbox() == True and retarget_tool_ui.get_pos_checkbox() == False:
+        if self.rot_checkbox.isChecked() == True and self.pos_checkbox.isChecked() == False:
             suffix = "_ROT"
     
-        elif retarget_tool_ui.get_pos_checkbox() == True and retarget_tool_ui.get_rot_checkbox() == False:
+        elif self.pos_checkbox.isChecked() == True and self.rot_checkbox.isChecked() == False:
             suffix = "_TRAN"
         
         else:
@@ -235,13 +191,13 @@ class RetargetingTool(QtWidgets.QDialog):
         cmds.xform(locator, translation=(0, 0, 0))
  
         # Select the type of constraint based on the ui checkboxes
-        if retarget_tool_ui.get_rot_checkbox() == True and retarget_tool_ui.get_pos_checkbox() == True:
+        if self.rot_checkbox.isChecked() == True and self.pos_checkbox.isChecked() == True:
             cmds.parentConstraint(locator, selected_ctrl, maintainOffset=True)
     
-        elif retarget_tool_ui.get_rot_checkbox() == True and retarget_tool_ui.get_pos_checkbox() == False:
+        elif self.rot_checkbox.isChecked() == True and self.pos_checkbox.isChecked() == False:
             cmds.orientConstraint(locator, selected_ctrl, maintainOffset=True)
     
-        elif retarget_tool_ui.get_pos_checkbox() == True and retarget_tool_ui.get_rot_checkbox() == False:
+        elif self.pos_checkbox.isChecked() == True and self.rot_checkbox.isChecked() == False:
             cmds.pointConstraint(locator, selected_ctrl, maintainOffset=True)
         else:
             cmds.warning("Select translation and/or rotation!")
@@ -260,7 +216,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.rot_checkbox.setChecked(True)
         self.pos_checkbox.setChecked(True)
 
-        if retarget_tool_ui.get_snap_checkbox() == True:
+        if self.snap_checkbox.isChecked() == True:
             cmds.matchTransform(selected_ctrl, selected_joint, pos=True)
         else:
             pass
@@ -357,34 +313,6 @@ class RetargetingTool(QtWidgets.QDialog):
             pass
         self.refresh_ui_list()
 
-    @classmethod
-    def bake_animation(self):
-
-        if len(self.get_connected_ctrls()) == 0:
-            cmds.warning("No connections found in scene!")
-        if len(self.get_connected_ctrls()) != 0:
-            time_min = cmds.playbackOptions(query=True, min=True)
-            time_max = cmds.playbackOptions(query=True, max=True)
-
-            # Bake the animation
-            cmds.refresh(suspend=True)
-            cmds.bakeResults(self.get_connected_ctrls(), t=(time_min, time_max), sb=1, at=["rx","ry","rz","tx","ty","tz"], hi="none")
-            cmds.refresh(suspend=False)
-
-            # Delete the connect nodes
-            for node in self.get_connect_nodes():
-                try:
-                    cmds.delete(node)
-                except:
-                    pass
-            
-            # Remove the message attribute from the controllers
-            for ctrl in self.get_connected_ctrls():
-                try:
-                    cmds.deleteAttr(ctrl, attribute="ConnectedCtrl")
-                except:
-                    pass
-
     def help_dialog(self):
         dialog = cmds.confirmDialog(title="Instructions", message="To create a connection simply select the driver and then the driven and click 'Create connection'. For IK hands and IK feet controllers you can use 'Create IK Connection' for more complex retargeting. \n \nAs an example: if you want to transfer animation from a skeleton to a rig, first select the animated joint and then select the controller before you create a connection.", button=["Ok"], defaultButton="Ok", cancelButton="Ok")
         return dialog
@@ -398,15 +326,62 @@ class RetargetingTool(QtWidgets.QDialog):
         self.settings_window = BatchExport()
         self.settings_window.show()
 
+    @classmethod
+    def bake_animation(cls):
+        if len(cls.get_connected_ctrls()) == 0:
+            cmds.warning("No connections found in scene!")
+        if len(cls.get_connected_ctrls()) != 0:
+            time_min = cmds.playbackOptions(query=True, min=True)
+            time_max = cmds.playbackOptions(query=True, max=True)
+
+            # Bake the animation
+            cmds.refresh(suspend=True)
+            cmds.bakeResults(cls.get_connected_ctrls(), t=(time_min, time_max), sb=1, at=["rx","ry","rz","tx","ty","tz"], hi="none")
+            cmds.refresh(suspend=False)
+
+            # Delete the connect nodes
+            for node in cls.get_connect_nodes():
+                try:
+                    cmds.delete(node)
+                except:
+                    pass
+            
+            # Remove the message attribute from the controllers
+            for ctrl in cls.get_connected_ctrls():
+                try:
+                    cmds.deleteAttr(ctrl, attribute="ConnectedCtrl")
+                except:
+                    pass
+
+    @classmethod
+    def get_connect_nodes(cls):
+        connect_nodes_in_scene = []
+        for i in cmds.ls():
+            if cmds.attributeQuery("ConnectNode", node=i, exists=True) == True:
+                connect_nodes_in_scene.append(i)
+            else:
+                pass
+        return connect_nodes_in_scene
+
+    @classmethod
+    def get_connected_ctrls(cls):
+        connected_ctrls_in_scene = []
+        for i in cmds.ls():
+            if cmds.attributeQuery("ConnectedCtrl", node=i, exists=True) == True:
+                connected_ctrls_in_scene.append(i)
+            else:
+                pass
+        return connected_ctrls_in_scene
+
 
 class ListItem_UI(QtWidgets.QWidget):
     '''
     UI item class.
     When a new List Item is created it gets added to the connection_list_widget in the RetargetingTool class.
     '''
-    def __init__(self, shape_name, parent=None):
+    def __init__(self, connection_node, parent=None):
         super(ListItem_UI, self).__init__(parent)
-        self.shape_name = shape_name
+        self.connection_node = connection_node
  
         self.setFixedHeight(26)
         self.create_ui_widgets()
@@ -428,7 +403,7 @@ class ListItem_UI(QtWidgets.QWidget):
         self.del_button.setText("Delete")
         self.del_button.setFixedWidth(80)
 
-        self.transform_name_label = QtWidgets.QLabel(self.shape_name)
+        self.transform_name_label = QtWidgets.QLabel(self.connection_node)
         self.transform_name_label.setAlignment(QtCore.Qt.AlignCenter)
  
     def create_ui_layout(self):
@@ -436,10 +411,8 @@ class ListItem_UI(QtWidgets.QWidget):
         main_layout.setContentsMargins(5, 5, 20, 0)
         main_layout.addWidget(self.color_button)
         main_layout.addWidget(self.transform_name_label)
-        # main_layout.addStretch()
         main_layout.addWidget(self.sel_button)
         main_layout.addWidget(self.del_button)
-        # main_layout.addStretch()
  
     def create_ui_connections(self):
         self.sel_button.clicked.connect(self.select_connection_node)
@@ -447,24 +420,22 @@ class ListItem_UI(QtWidgets.QWidget):
         self.color_button.clicked.connect(self.set_color)
  
     def select_connection_node(self):
-        cmds.select(self.shape_name)  
+        cmds.select(self.connection_node)  
 
     def delete_connection_node(self):
         try:
-            for attr in cmds.listConnections(self.shape_name, destination=True):
+            for attr in cmds.listConnections(self.connection_node, destination=True):
                 if cmds.attributeQuery("ConnectedCtrl", node=attr, exists=True):
                     cmds.deleteAttr(attr, at="ConnectedCtrl")
         except:
             pass
 
-        cmds.delete(self.shape_name)
+        cmds.delete(self.connection_node)
         retarget_tool_ui.refresh_ui_list()
  
     def set_color(self):
-        # Get the connection nodes, their ui element and the Maya override color list
-        connection_node = retarget_tool_ui.get_connect_nodes()
+        connection_nodes = RetargetingTool.get_connect_nodes()
         color = retarget_tool_ui.maya_color_list
-        ui_items = retarget_tool_ui.connection_list
 
         if retarget_tool_ui.counter < 3:
             retarget_tool_ui.counter += 1
@@ -472,17 +443,15 @@ class ListItem_UI(QtWidgets.QWidget):
             retarget_tool_ui.counter = 0
 
         # Set the color on the connection node shape and button
-        for con in connection_node:
+        for con in connection_nodes:
             cmds.setAttr(con+".overrideEnabled", 1)
             cmds.setAttr(con+".overrideColor", color[retarget_tool_ui.counter])
 
-        for i in ui_items:
-            i.color_button.setStyleSheet("background-color:"+self.get_color())
+        retarget_tool_ui.refresh_ui_list()
  
     def get_color(self):
         # Set the color of the button based on the color of the connection shape
-        ctrl = self.shape_name
-        current_color = cmds.getAttr(ctrl+".overrideColor")
+        current_color = cmds.getAttr(self.connection_node+".overrideColor")
         colors_dict = {"13":"red", "18":"cyan", "14":"green", "17":"yellow"}
         color = colors_dict.get(str(current_color), "grey")
         return color
@@ -661,8 +630,6 @@ class BatchExport(QtWidgets.QDialog):
             if self.file_type_combo.currentText() == ".fbx":
                 output_path += ".fbx"
                 cmds.file(rename=output_path)
-                # Would like to add the ability to load a FBX export preset file
-                # mel.eval('FBXLoadExportPresetFile -f)
                 if self.export_selected_line.text() != "":
                     cmds.select(self.export_selected_line.text(), replace=True)
                     maya.mel.eval('FBXExport -f "{}" -s'.format(output_path))
