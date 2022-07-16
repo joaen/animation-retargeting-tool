@@ -308,7 +308,17 @@ class RetargetingTool(QtWidgets.QDialog):
     def bake_animation_confirm(self):
         confirm = cmds.confirmDialog(title="Confirm", message="Baking the animation will delete all the connection nodes. Do you wish to proceed?", button=["Yes","No"], defaultButton="Yes", cancelButton="No")
         if confirm == "Yes":
+            progress_dialog = QtWidgets.QProgressDialog("Baking animation", None, 0, -1, self)
+            progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
+            progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+            # progress_dialog.setValue(0)
+            progress_dialog.setWindowTitle("Progress...")
+            progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
+            progress_dialog.show()
+            QtCore.QCoreApplication.processEvents()
+            # Bake animation
             self.bake_animation()
+            progress_dialog.close()
         if confirm == "No":
             pass
         self.refresh_ui_list()
@@ -452,7 +462,7 @@ class ListItem_UI(QtWidgets.QWidget):
     def get_color(self):
         # Set the color of the button based on the color of the connection shape
         current_color = cmds.getAttr(self.connection_node+".overrideColor")
-        colors_dict = {"13":"red", "18":"cyan", "14":"green", "17":"yellow"}
+        colors_dict = {"13":"red", "18":"cyan", "14":"lime", "17":"yellow"}
         color = colors_dict.get(str(current_color), "grey")
         return color
 
@@ -593,7 +603,7 @@ class BatchExport(QtWidgets.QDialog):
         else:
             confirm_dialog = self.output_filepath_dialog()
             if confirm_dialog == True:
-                self.bake_export()
+                self.bake_export()         
             else:
                 pass
 
@@ -658,6 +668,7 @@ class BatchExport(QtWidgets.QDialog):
         print("------")
         for i in export_result:
             print(i)
+        print("------")
 
         progress_dialog.setValue(number_of_operations)
         progress_dialog.close()
