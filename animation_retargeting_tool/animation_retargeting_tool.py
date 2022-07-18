@@ -137,8 +137,8 @@ class RetargetingTool(QtWidgets.QDialog):
         self.clear_list()
  
         connect_nodes_in_scene = self.get_connect_nodes()
-        for conn in connect_nodes_in_scene:
-            connection_ui_item = ListItem_UI(conn)
+        for node in connect_nodes_in_scene:
+            connection_ui_item = ListItem_UI(parent_instance=self, connection_node=node)
  
             self.connection_layout.addWidget(connection_ui_item)
             self.connection_list.append(connection_ui_item)
@@ -389,9 +389,10 @@ class ListItem_UI(QtWidgets.QWidget):
     UI item class.
     When a new List Item is created it gets added to the connection_list_widget in the RetargetingTool class.
     '''
-    def __init__(self, connection_node, parent=None):
-        super(ListItem_UI, self).__init__(parent)
+    def __init__(self, connection_node, parent_instance):
+        super(ListItem_UI, self).__init__()
         self.connection_node = connection_node
+        self.parent_instance = parent_instance
  
         self.setFixedHeight(26)
         self.create_ui_widgets()
@@ -441,23 +442,23 @@ class ListItem_UI(QtWidgets.QWidget):
             pass
 
         cmds.delete(self.connection_node)
-        retarget_tool_ui.refresh_ui_list()
+        self.parent_instance.refresh_ui_list()
  
     def set_color(self):
         connection_nodes = RetargetingTool.get_connect_nodes()
-        color = retarget_tool_ui.maya_color_list
+        color = self.parent_instance.maya_color_list
 
-        if retarget_tool_ui.counter < 3:
-            retarget_tool_ui.counter += 1
+        if self.parent_instance.counter < 3:
+            self.parent_instance.counter += 1
         else:
-            retarget_tool_ui.counter = 0
+            self.parent_instance.counter = 0
 
         # Set the color on the connection node shape and button
         for con in connection_nodes:
             cmds.setAttr(con+".overrideEnabled", 1)
-            cmds.setAttr(con+".overrideColor", color[retarget_tool_ui.counter])
+            cmds.setAttr(con+".overrideColor", color[self.parent_instance.counter])
 
-        retarget_tool_ui.refresh_ui_list()
+        self.parent_instance.refresh_ui_list()
  
     def get_color(self):
         # Set the color of the button based on the color of the connection shape
