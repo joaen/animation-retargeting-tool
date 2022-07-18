@@ -28,7 +28,7 @@ animation_retargeting_tool.start()
 ## How to load a new animation clip to the connected rig:
 1. Open the ma. file where you saved your connections.
 2. In the top menu of Maya click 'File' > 'Import...' and select a fbx. with animation or mocap.
-3. Select FBX file type and to the right, scroll to the bottom and choose 'Update animation' under 'File content'. 
+3. Select FBX file type and to the right, scroll to the bottom and choose 'Update animation' under 'File content'.
 4. The animation will be loaded on the skeleton without affecting the rig connections.
 
-![](https://github.com/joaen/animation_retargeting_tool/blob/main/images/load_fbx.gif)
+![](https://github.com/joaen/animation_retargeting_tool/blob/main/images/dino.gif)
