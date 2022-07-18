@@ -416,6 +416,13 @@ class ListItem_UI(QtWidgets.QWidget):
 
         self.transform_name_label = QtWidgets.QLabel(self.connection_node)
         self.transform_name_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        for i in cmds.ls(selection=True):
+            if i == self.connection_node:
+                self.transform_name_label.setStyleSheet("color: white")
+                break
+            else:
+                self.transform_name_label.setStyleSheet("color: darkgray")
  
     def create_ui_layout(self):
         main_layout = QtWidgets.QHBoxLayout(self)
