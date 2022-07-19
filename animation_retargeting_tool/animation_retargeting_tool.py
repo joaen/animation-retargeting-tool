@@ -310,7 +310,6 @@ class RetargetingTool(QtWidgets.QDialog):
             progress_dialog = QtWidgets.QProgressDialog("Baking animation", None, 0, -1, self)
             progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowCloseButtonHint)
             progress_dialog.setWindowFlags(progress_dialog.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
-            # progress_dialog.setValue(0)
             progress_dialog.setWindowTitle("Progress...")
             progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
             progress_dialog.show()
@@ -397,6 +396,13 @@ class ListItemWidget(QtWidgets.QWidget):
         self.create_ui_widgets()
         self.create_ui_layout()
         self.create_ui_connections()
+
+        # If there is already connection nodes in the scene update the color counter
+        try:
+            current_override = cmds.getAttr(self.connection_node+".overrideColor")
+            self.main.color_counter = self.main.maya_color_index.keys().index(current_override)
+        except:
+            pass
  
     def create_ui_widgets(self):
         self.color_button = QtWidgets.QPushButton()
@@ -453,12 +459,6 @@ class ListItemWidget(QtWidgets.QWidget):
  
     def set_color(self):
         # Set the color on the connection node and button
-        try:
-            current_override = cmds.getAttr(self.connection_node+".overrideColor")
-            self.main.color_counter = self.main.maya_color_index.keys().index(current_override)
-        except:
-            pass
-
         connection_nodes = self.main.cached_connect_nodes
         color = self.main.maya_color_index.keys()
 
