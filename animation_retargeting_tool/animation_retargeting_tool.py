@@ -13,6 +13,7 @@ import animation_retargeting_tool
 animation_retargeting_tool.start()
  
 '''
+from collections import OrderedDict
 import os
 import sys
 import maya.mel
@@ -44,7 +45,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.script_job_ids = []
         self.connection_ui_widgets = []
         self.color_counter = 0
-        self.maya_color_list = [13, 18, 14, 17]
+        self.maya_color_index = OrderedDict([(13, "red"), (18, "cyan"), (14, "lime"), (17, "yellow")])
         self.cached_connect_nodes = []
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
@@ -64,10 +65,8 @@ class RetargetingTool(QtWidgets.QDialog):
         self.bake_button = QtWidgets.QPushButton("Bake Animation")
         self.bake_button.setStyleSheet("background-color: lightgreen; color: black")
         self.batch_bake_button = QtWidgets.QPushButton("Batch Bake And Export ...")
-
         self.help_button = QtWidgets.QPushButton("?")
         self.help_button.setFixedWidth(25)
- 
         self.rot_checkbox = QtWidgets.QCheckBox("Rotation")
         self.pos_checkbox = QtWidgets.QCheckBox("Translation")
         self.mo_checkbox = QtWidgets.QCheckBox("Maintain Offset")
@@ -83,7 +82,6 @@ class RetargetingTool(QtWidgets.QDialog):
         horizontal_layout_2 = QtWidgets.QHBoxLayout()
         horizontal_layout_2.addWidget(self.simple_conn_button)
         horizontal_layout_2.addWidget(self.ik_conn_button)
-
         horizontal_layout_3 = QtWidgets.QHBoxLayout()
         horizontal_layout_3.addWidget(self.batch_bake_button)
         horizontal_layout_3.addWidget(self.bake_button)
@@ -279,7 +277,7 @@ class RetargetingTool(QtWidgets.QDialog):
 
         locator = self.combine_shapes(curves, ctrl_shape_name)
         cmds.setAttr(locator+".overrideEnabled", 1)
-        cmds.setAttr(locator+".overrideColor", self.maya_color_list[self.color_counter])
+        cmds.setAttr(locator+".overrideColor", self.maya_color_index.keys()[self.color_counter])
         return locator
 
     def create_ctrl_sphere(self, ctrl_shape_name):
@@ -293,7 +291,7 @@ class RetargetingTool(QtWidgets.QDialog):
         cmds.rotate(90, 0, 0, circles[3])
         sphere = self.combine_shapes(circles, ctrl_shape_name)
         cmds.setAttr(sphere+".overrideEnabled", 1)
-        cmds.setAttr(sphere+".overrideColor", self.maya_color_list[self.color_counter])
+        cmds.setAttr(sphere+".overrideColor", self.maya_color_index.keys()[self.color_counter])
         self.scale_ctrl_shape(sphere, 0.5)
         return sphere
 
@@ -393,7 +391,7 @@ class ListItemWidget(QtWidgets.QWidget):
     def __init__(self, connection_node, parent_instance):
         super(ListItemWidget, self).__init__()
         self.connection_node = connection_node
-        self.parent_instance = parent_instance
+        self.main = parent_instance
  
         self.setFixedHeight(26)
         self.create_ui_widgets()
@@ -403,7 +401,7 @@ class ListItemWidget(QtWidgets.QWidget):
     def create_ui_widgets(self):
         self.color_button = QtWidgets.QPushButton()
         self.color_button.setFixedSize(20, 20)
-        self.color_button.setStyleSheet("background-color:" + self.get_color())
+        self.color_button.setStyleSheet("background-color:" + self.get_current_color())
  
         self.sel_button = QtWidgets.QPushButton()
         self.sel_button.setStyleSheet("background-color: #707070")
@@ -438,7 +436,7 @@ class ListItemWidget(QtWidgets.QWidget):
  
     def select_connection_node(self):
         cmds.select(self.connection_node) 
-        for widget in self.parent_instance.connection_ui_widgets:
+        for widget in self.main.connection_ui_widgets:
             widget.transform_name_label.setStyleSheet("color: darkgray")
         self.transform_name_label.setStyleSheet("color: white")
 
@@ -451,31 +449,35 @@ class ListItemWidget(QtWidgets.QWidget):
             pass
 
         cmds.delete(self.connection_node)
-        self.parent_instance.refresh_ui_list()
+        self.main.refresh_ui_list()
  
     def set_color(self):
-        # Set the color on the connection node shape and button
-        connection_nodes = self.parent_instance.cached_connect_nodes
-        color = self.parent_instance.maya_color_list
+        # Set the color on the connection node and button
+        try:
+            current_override = cmds.getAttr(self.connection_node+".overrideColor")
+            self.main.color_counter = self.main.maya_color_index.keys().index(current_override)
+        except:
+            pass
 
-        if self.parent_instance.color_counter < 3:
-            self.parent_instance.color_counter += 1
+        connection_nodes = self.main.cached_connect_nodes
+        color = self.main.maya_color_index.keys()
+
+        if self.main.color_counter < 3:
+            self.main.color_counter += 1
         else:
-            self.parent_instance.color_counter = 0
+            self.main.color_counter = 0
 
-        for con in connection_nodes:
-            cmds.setAttr(con+".overrideEnabled", 1)
-            cmds.setAttr(con+".overrideColor", color[self.parent_instance.color_counter])
+        for node in connection_nodes:
+            cmds.setAttr(node+".overrideEnabled", 1)
+            cmds.setAttr(node+".overrideColor", color[self.main.color_counter])
 
-        for widget in self.parent_instance.connection_ui_widgets:
-            widget.color_button.setStyleSheet("background-color:"+self.get_color())
+        for widget in self.main.connection_ui_widgets:
+            widget.color_button.setStyleSheet("background-color:"+self.get_current_color())
  
-    def get_color(self):
-        # Set the color of the button based on the color of the connection shape
-        current_color = cmds.getAttr(self.connection_node+".overrideColor")
-        colors_dict = {"13":"red", "18":"cyan", "14":"lime", "17":"yellow"}
-        color = colors_dict.get(str(current_color), "grey")
-        return color
+    def get_current_color(self):
+        current_color_index = cmds.getAttr(self.connection_node+".overrideColor")
+        color_name = self.main.maya_color_index.get(current_color_index, "grey")
+        return color_name
 
 class BatchExport(QtWidgets.QDialog):
     '''
@@ -573,12 +575,10 @@ class BatchExport(QtWidgets.QDialog):
     def animation_filepath_dialog(self):
         file_paths = QtWidgets.QFileDialog.getOpenFileNames(self, "Select Animation Clips", "", "FBX (*.fbx);;All files (*.*)")
         file_path_list = file_paths[0]
-        # self.animation_clip_paths = []
 
         if file_path_list[0]:
             for i in file_path_list:
                 self.file_list_widget.addItem(i)
-                # self.animation_clip_paths.append(i)
         
         for i in range(0, self.file_list_widget.count()):
             self.file_list_widget.item(i).setTextColor(QtGui.QColor("white"))
