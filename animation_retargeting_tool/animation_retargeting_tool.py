@@ -419,12 +419,10 @@ class ListItem_UI(QtWidgets.QWidget):
         self.transform_name_label = QtWidgets.QLabel(self.connection_node)
         self.transform_name_label.setAlignment(QtCore.Qt.AlignCenter)
 
-        for i in cmds.ls(selection=True):
-            if i == self.connection_node:
+        self.transform_name_label.setStyleSheet("color: darkgray")
+        for selected in cmds.ls(selection=True):
+            if selected == self.connection_node:
                 self.transform_name_label.setStyleSheet("color: white")
-                break
-            else:
-                self.transform_name_label.setStyleSheet("color: darkgray")
  
     def create_ui_layout(self):
         main_layout = QtWidgets.QHBoxLayout(self)
@@ -441,6 +439,9 @@ class ListItem_UI(QtWidgets.QWidget):
  
     def select_connection_node(self):
         cmds.select(self.connection_node)  
+        for widget in self.parent_instance.connection_ui_widgets:
+            widget.transform_name_label.setStyleSheet("color: darkgray")
+        self.transform_name_label.setStyleSheet("color: white")
 
     def delete_connection_node(self):
         try:
