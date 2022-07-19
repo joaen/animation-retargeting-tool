@@ -140,8 +140,7 @@ class RetargetingTool(QtWidgets.QDialog):
         connect_nodes_in_scene = RetargetingTool.get_connect_nodes()
         self.cached_connect_nodes = connect_nodes_in_scene
         for node in connect_nodes_in_scene:
-            connection_ui_item = ListItem_UI(parent_instance=self, connection_node=node)
- 
+            connection_ui_item = ListItemWidget(parent_instance=self, connection_node=node)
             self.connection_layout.addWidget(connection_ui_item)
             self.connection_ui_widgets.append(connection_ui_item)
  
@@ -386,13 +385,13 @@ class RetargetingTool(QtWidgets.QDialog):
         return connected_ctrls_in_scene
 
 
-class ListItem_UI(QtWidgets.QWidget):
+class ListItemWidget(QtWidgets.QWidget):
     '''
-    UI item class.
+    UI list item class.
     When a new List Item is created it gets added to the connection_list_widget in the RetargetingTool class.
     '''
     def __init__(self, connection_node, parent_instance):
-        super(ListItem_UI, self).__init__()
+        super(ListItemWidget, self).__init__()
         self.connection_node = connection_node
         self.parent_instance = parent_instance
  
@@ -438,7 +437,7 @@ class ListItem_UI(QtWidgets.QWidget):
         self.color_button.clicked.connect(self.set_color)
  
     def select_connection_node(self):
-        cmds.select(self.connection_node)  
+        cmds.select(self.connection_node) 
         for widget in self.parent_instance.connection_ui_widgets:
             widget.transform_name_label.setStyleSheet("color: darkgray")
         self.transform_name_label.setStyleSheet("color: white")
