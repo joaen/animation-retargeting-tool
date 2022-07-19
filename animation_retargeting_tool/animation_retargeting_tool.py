@@ -42,9 +42,10 @@ class RetargetingTool(QtWidgets.QDialog):
         super(RetargetingTool, self).__init__(maya_main_window())
         
         self.script_job_ids = []
-        self.connection_list = []
-        self.counter = 0
+        self.connection_ui_widgets = []
+        self.color_counter = 0
         self.maya_color_list = [13, 18, 14, 17]
+        self.cached_connect_nodes = []
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
         self.resize(400, 300)
@@ -136,15 +137,16 @@ class RetargetingTool(QtWidgets.QDialog):
     def refresh_ui_list(self):
         self.clear_list()
  
-        connect_nodes_in_scene = self.get_connect_nodes()
+        connect_nodes_in_scene = RetargetingTool.get_connect_nodes()
+        self.cached_connect_nodes = connect_nodes_in_scene
         for node in connect_nodes_in_scene:
             connection_ui_item = ListItem_UI(parent_instance=self, connection_node=node)
  
             self.connection_layout.addWidget(connection_ui_item)
-            self.connection_list.append(connection_ui_item)
+            self.connection_ui_widgets.append(connection_ui_item)
  
     def clear_list(self):
-        self.connection_list = []
+        self.connection_ui_widgets = []
  
         while self.connection_layout.count() > 0:
             connection_ui_item = self.connection_layout.takeAt(0)
@@ -278,7 +280,7 @@ class RetargetingTool(QtWidgets.QDialog):
 
         locator = self.combine_shapes(curves, ctrl_shape_name)
         cmds.setAttr(locator+".overrideEnabled", 1)
-        cmds.setAttr(locator+".overrideColor", self.maya_color_list[self.counter])
+        cmds.setAttr(locator+".overrideColor", self.maya_color_list[self.color_counter])
         return locator
 
     def create_ctrl_sphere(self, ctrl_shape_name):
@@ -292,7 +294,7 @@ class RetargetingTool(QtWidgets.QDialog):
         cmds.rotate(90, 0, 0, circles[3])
         sphere = self.combine_shapes(circles, ctrl_shape_name)
         cmds.setAttr(sphere+".overrideEnabled", 1)
-        cmds.setAttr(sphere+".overrideColor", self.maya_color_list[self.counter])
+        cmds.setAttr(sphere+".overrideColor", self.maya_color_list[self.color_counter])
         self.scale_ctrl_shape(sphere, 0.5)
         return sphere
 
@@ -452,20 +454,21 @@ class ListItem_UI(QtWidgets.QWidget):
         self.parent_instance.refresh_ui_list()
  
     def set_color(self):
-        connection_nodes = RetargetingTool.get_connect_nodes()
+        # Set the color on the connection node shape and button
+        connection_nodes = self.parent_instance.cached_connect_nodes
         color = self.parent_instance.maya_color_list
 
-        if self.parent_instance.counter < 3:
-            self.parent_instance.counter += 1
+        if self.parent_instance.color_counter < 3:
+            self.parent_instance.color_counter += 1
         else:
-            self.parent_instance.counter = 0
+            self.parent_instance.color_counter = 0
 
-        # Set the color on the connection node shape and button
         for con in connection_nodes:
             cmds.setAttr(con+".overrideEnabled", 1)
-            cmds.setAttr(con+".overrideColor", color[self.parent_instance.counter])
+            cmds.setAttr(con+".overrideColor", color[self.parent_instance.color_counter])
 
-        self.parent_instance.refresh_ui_list()
+        for widget in self.parent_instance.connection_ui_widgets:
+            widget.color_button.setStyleSheet("background-color:"+self.get_color())
  
     def get_color(self):
         # Set the color of the button based on the color of the connection shape
