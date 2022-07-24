@@ -16,6 +16,7 @@ animation_retargeting_tool.start()
 from collections import OrderedDict
 import os
 import sys
+import webbrowser
 import maya.mel
 import maya.cmds as cmds
 from functools import partial
@@ -321,9 +322,19 @@ class RetargetingTool(QtWidgets.QDialog):
             pass
         self.refresh_ui_list()
 
-    def help_dialog(self):
-        dialog = cmds.confirmDialog(title="Instructions", message="To create a connection simply select the driver and then the driven and click 'Create connection'. For IK hands and IK feet controllers you can use 'Create IK Connection' for more complex retargeting. \n \nAs an example: if you want to transfer animation from a skeleton to a rig, first select the animated joint and then select the controller before you create a connection.", button=["Ok"], defaultButton="Ok", cancelButton="Ok")
-        return dialog
+    def help_dialog(self):        
+        confirm = cmds.confirmDialog(
+                        title="How to use",
+                        message="To create a connection simply select the driver and then the driven and click 'Create connection'. For IK hands and IK feet controllers you can use 'Create IK Connection' for more complex retargeting. \n \nAs an example: if you want to transfer animation from a skeleton to a rig, first select the animated joint and then select the controller before you create a connection.",
+                        button=["How to use the retargeting tool (Youtube)", "How to use the batch exporter (Youtube)", "Cancel"],
+                        defaultButton="Cancel",
+                        cancelButton="Cancel",
+                        dismissString="Cancel")
+
+        if confirm == "How to use the retargeting tool (Youtube)":  
+            webbrowser.open_new("https://www.youtube.com/watch?v=2PBIFunhha4")
+        elif confirm == "How to use the batch exporter (Youtube)":
+            webbrowser.open_new("https://www.youtube.com/watch?v=YYVEHk_KurY")
 
     def open_batch_window(self):
         try:
