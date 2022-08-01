@@ -332,9 +332,9 @@ class RetargetingTool(QtWidgets.QDialog):
                         dismissString="Cancel")
 
         if confirm == "How to use the retargeting tool (Youtube)":  
-            webbrowser.open_new("https://www.youtube.com/watch?v=2PBIFunhha4")
+            webbrowser.open_new("https://youtu.be/x2-agPVfinc")
         elif confirm == "How to use the batch exporter (Youtube)":
-            webbrowser.open_new("https://www.youtube.com/watch?v=YYVEHk_KurY")
+            webbrowser.open_new("https://youtu.be/KOURUtN36ko")
 
     def open_batch_window(self):
         try:
