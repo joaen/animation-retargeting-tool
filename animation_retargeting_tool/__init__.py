@@ -1,4 +1,1 @@
-import animation_retargeting_tool
-
-def start():
-    animation_retargeting_tool.start()
+from .animation_retargeting_tool import start
