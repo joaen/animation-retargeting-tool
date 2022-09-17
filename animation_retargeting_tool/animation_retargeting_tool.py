@@ -239,8 +239,8 @@ class RetargetingTool(QtWidgets.QDialog):
         cmds.xform(rot_locator, rotation=(0, 0, 0))
         cmds.xform(rot_locator, translation=(0, 0, 0))
     
-        jointParent = cmds.listRelatives(selected_joint, parent=True)[0]
-        cmds.parent(tran_locator, jointParent)
+        joint_parent = cmds.listRelatives(selected_joint, parent=True)[0]
+        cmds.parent(tran_locator, joint_parent)
         cmds.makeIdentity(tran_locator, apply=True, translate=True)
     
         cmds.orientConstraint(selected_joint, tran_locator, maintainOffset=False)
@@ -278,7 +278,7 @@ class RetargetingTool(QtWidgets.QDialog):
 
         locator = self.combine_shapes(curves, ctrl_shape_name)
         cmds.setAttr(locator+".overrideEnabled", 1)
-        cmds.setAttr(locator+".overrideColor", self.maya_color_index.keys()[self.color_counter])
+        cmds.setAttr(locator+".overrideColor", list(self.maya_color_index.keys())[self.color_counter])
         return locator
 
     def create_ctrl_sphere(self, ctrl_shape_name):
@@ -292,7 +292,7 @@ class RetargetingTool(QtWidgets.QDialog):
         cmds.rotate(90, 0, 0, circles[3])
         sphere = self.combine_shapes(circles, ctrl_shape_name)
         cmds.setAttr(sphere+".overrideEnabled", 1)
-        cmds.setAttr(sphere+".overrideColor", self.maya_color_index.keys()[self.color_counter])
+        cmds.setAttr(sphere+".overrideColor", list(self.maya_color_index.keys())[self.color_counter])
         self.scale_ctrl_shape(sphere, 0.5)
         return sphere
 
@@ -471,7 +471,7 @@ class ListItemWidget(QtWidgets.QWidget):
     def set_color(self):
         # Set the color on the connection node and button
         connection_nodes = self.main.cached_connect_nodes
-        color = self.main.maya_color_index.keys()
+        color = list(self.main.maya_color_index.keys())
 
         if self.main.color_counter < 3:
             self.main.color_counter += 1
