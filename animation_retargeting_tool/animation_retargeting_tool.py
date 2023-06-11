@@ -6,13 +6,10 @@ Description: Transfer animation data between rigs or transfer raw mocap from a s
 Author: Joar Engberg 2021
 
 Installation:
-Add animation_retargeting_tool.py to your Maya scripts folder (Username\Documents\maya\scripts).
-To start the tool within Maya, run these this lines of code from the Maya script editor or add them to a shelf button:
-
-import animation_retargeting_tool
-animation_retargeting_tool.start()
- 
+Place animation_retargeting_tool.py and userSetup.mel in "Username/Documents/maya/version/scripts"
+The next time you start Maya you will find "Animation Retargeting Tool" on the menu bar at the top.
 '''
+
 from collections import OrderedDict
 import os
 import sys
@@ -711,5 +708,15 @@ def start():
     retarget_tool_ui = RetargetingTool()
     retarget_tool_ui.show()
 
-if __name__ == "__main__":
-    start()
+def menu_items():
+    cmds.setParent( maya.mel.eval( "$temp1=$gMainWindow" ) )
+
+    # Get rid of it, if it already exists
+    if cmds.control( "animation_retargeting_tool", exists = True ):
+        cmds.deleteUI( "animation_retargeting_tool", menu = True )
+
+    # Create the menu
+    main_menu = cmds.menu( "animation_retargeting_tool", label = "Animation Retargeting Tool", tearOff = True )
+    cmds.menuItem( parent = main_menu, label = "Start", command = lambda x: start() )
+
+menu_items()
