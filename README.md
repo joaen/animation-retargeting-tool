@@ -3,13 +3,8 @@
 A tool for transferring animation data between rigs or transfer raw mocap from a skeleton to a custom rig. (The script is compatible with Autodesk: Maya 2017 or later.)
 
 ## Installation:
-1. Add ***animation_retargeting_tool.py*** to your Maya scripts folder (Username\Documents\maya\scripts).
-2. To start the tool within Maya, run these these lines of code from the Maya script editor or add them to a shelf button:
-
-```python
-import animation_retargeting_tool
-animation_retargeting_tool.start()
-```
+1. Place ***animation_retargeting_tool.py*** and ***userSetup.mel*** in (Username/Documents/maya/version/scripts)
+2. The next time you start Maya you will find "Animation Retargeting Tool" on the menu bar at the top.
 
 ## How to use:
 
