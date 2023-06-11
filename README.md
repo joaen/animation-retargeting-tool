@@ -6,11 +6,6 @@ A tool for transferring animation data between rigs or transfer raw mocap from a
 1. Place ***animation_retargeting_tool.py*** and ***userSetup.mel*** in (Username/Documents/maya/version/scripts)
 2. The next time you start Maya you will find "Animation Retargeting Tool" on the menu bar at the top.
 
-```python
-import animation_retargeting_tool
-animation_retargeting_tool.start()
-```
-
 ## How to use:
 
 * To create a connection select the joint with animation data and then select the controller it should drive and click 'Create Connection'.
