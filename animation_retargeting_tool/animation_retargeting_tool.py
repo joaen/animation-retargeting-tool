@@ -21,8 +21,15 @@ import maya.mel
 import maya.cmds as cmds
 from functools import partial
 import maya.OpenMayaUI as omui
-from shiboken2 import wrapInstance
-from PySide2 import QtCore, QtGui, QtWidgets
+
+maya_version = int(cmds.about(version=True))
+
+if maya_version < 2025:
+    from shiboken2 import wrapInstance
+    from PySide2 import QtCore, QtGui, QtWidgets
+else:
+    from shiboken6 import wrapInstance
+    from PySide6 import QtCore, QtGui, QtWidgets
 
 
 def maya_main_window():
